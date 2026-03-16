@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hızlanan Halay Simülatör ⚡</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI Emoji', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* Oyun Alanı */
+        canvas {
+            background-color: #5e3370; /* Koyu Mor Zemin */
+            /* Halı deseni efekti */
+            background-image: repeating-linear-gradient(45deg, #6a3b7d 25%, transparent 25%, transparent 75%, #6a3b7d 75%, #6a3b7d), 
+                              repeating-linear-gradient(45deg, #6a3b7d 25%, #5e3370 25%, #5e3370 75%, #6a3b7d 75%, #6a3b7d);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+            border: 12px solid #e1b12c; /* Altın Çerçeve */
+            border-radius: 15px;
+            box-shadow: 0 0 50px rgba(225, 177, 44, 0.4);
+        }
+
+        #scoreBoard {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #f1c40f;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 2;
+        }
+
+        /* Kontrol Butonları */
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 80px 80px 80px;
+            grid-gap: 10px;
+            z-index: 2;
+        }
+        .btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #e67e22, #d35400);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active {
+            transform: scale(0.95);
+            background: #d35400;
+        }
+        .placeholder { visibility: hidden; }
+
+        /* Başlangıç Perdesi */
+        #startScreen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            text-align: center;
+        }
+        #startBtn {
+            padding: 20px 40px;
+            font-size: 24px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            animation: pulse 1.5s infinite;
+            border: 4px solid white;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 20px rgba(39, 174, 96, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+        }
+
+        /* Youtube Gizli */
+        #playerContainer {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="startScreen">
+        <h1 style="color:#f1c40f; text-shadow:2px 2px #000; margin-bottom:20px;">HIZLANAN HALAY ⚡</h1>
+        <button id="startBtn" onclick="initGame()">▶️ HALAYA BAŞLA</button>
+        <p style="color:#ccc; margin-top:10px; font-size:12px;">(Telefonda sessiz modu kapatın)</p>
+    </div>
+
+    <div id="scoreBoard">Ekip: <span id="score">1</span> Kişi | Hız: <span id="speedDisplay">400</span>ms</div>
+    
+    <canvas id="gameCanvas" width="350" height="350"></canvas>
+
+    <div class="controls">
+        <div class="placeholder"></div>
+        <button class="btn" onclick="handleInput('UP')">⬆️</button>
+        <div class="placeholder"></div>
+        <button class="btn" onclick="handleInput('LEFT')">⬅️</button>
+        <button class="btn" onclick="handleInput('DOWN')">⬇️</button>
+        <button class="btn" onclick="handleInput('RIGHT')">➡️</button>
+    </div>
+
+    <div id="playerContainer"></div>
+
+    <script>
+        // --- GÖRSEL AYARLAR ---
+        
+        // 1. YEMLER (Tekil İnsanlar)
+        const foodTypes = ['👵', '👴', '👮', '👷', '👰', '🤵', '🧕', '🤴', '🧜‍♂️', '🧛‍♀️'];
+        
+        // 2. KUYRUK (Çiftler)
+        const bodyTypes = ['👫', '👭', '👬', '🧑‍🤝‍🧑', '👯‍♂️', '👯‍♀️'];
+        
+        const leaderEmoji = '🕺'; 
+
+        // --- OYUN DEĞİŞKENLERİ ---
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const box = 35; 
+        
+        let snake = [];     
+        let halayLine = []; 
+        let food = {};
+        let score = 1;
+        let d;
+        let nextDirection;
+        let isGameRunning = false;
+        
+        // **HIZ AYARLARI**
+        let gameSpeed = 400; // Başlangıç hızı (Yavaş)
+        const minSpeed = 60; // En fazla bu kadar hızlansın (Çok hızlı)
+        const speedStep = 10; // Her yem yendiğinde ne kadar hızlansın (ms)
+
+        // --- YOUTUBE API ---
+        var player;
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('playerContainer', {
+                height: '200',
+                width: '200',
+                videoId: 'G3RSV0hJ_U8', 
+                playerVars: { 
+                    'autoplay': 0, 
+                    'controls': 0, 
+                    'loop': 1, 
+                    'playlist': 'G3RSV0hJ_U8',
+                    'playsinline': 1 
+                }
+            });
+        }
+
+        // --- OYUNU BAŞLAT ---
+        function initGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            
+            if(player && player.playVideo) {
+                player.unMute();
+                player.setVolume(100);
+                player.playVideo();
+            }
+
+            // Değişkenleri Sıfırla
+            snake = [];
+            snake[0] = { x: 4 * box, y: 5 * box };
+            halayLine = []; 
+            
+            score = 1;
+            gameSpeed = 800; // Hızı başa sar
+            
+            document.getElementById("score").innerText = score;
+            document.getElementById("speedDisplay").innerText = gameSpeed;
+            
+            d = null; 
+            nextDirection = null;
+            isGameRunning = true;
+
+            spawnFood();
+            
+            window.requestAnimationFrame(gameCycle);
+        }
+
+        function spawnFood() {
+            let valid = false;
+            while(!valid) {
+                food = {
+                    x: Math.floor(Math.random() * (canvas.width / box)) * box,
+                    y: Math.floor(Math.random() * (canvas.height / box)) * box,
+                    type: foodTypes[Math.floor(Math.random() * foodTypes.length)]
+                };
+                
+                valid = true;
+                for(let part of snake) {
+                    if(part.x === food.x && part.y === food.y) valid = false;
+                }
+            }
+        }
+
+        // --- KONTROLLER ---
+        document.addEventListener("keydown", (e) => {
+            if(e.keyCode == 37) handleInput('LEFT');
+            if(e.keyCode == 38) handleInput('UP');
+            if(e.keyCode == 39) handleInput('RIGHT');
+            if(e.keyCode == 40) handleInput('DOWN');
+        });
+
+        function handleInput(newDir) {
+            if(!d && isGameRunning) {
+                d = newDir;
+                nextDirection = newDir;
+                return;
+            }
+            if (newDir == "LEFT" && d == "RIGHT") return;
+            if (newDir == "RIGHT" && d == "LEFT") return;
+            if (newDir == "UP" && d == "DOWN") return;
+            if (newDir == "DOWN" && d == "UP") return;
+            
+            nextDirection = newDir;
+        }
+
+        // --- OYUN DÖNGÜSÜ ---
+        let lastTime = 0;
+
+        function gameCycle(currentTime) {
+            if(!isGameRunning) return;
+            window.requestAnimationFrame(gameCycle);
+
+            const secondsSinceLastRender = (currentTime - lastTime) / 1000;
+            
+            // Buradaki "speed" artık değişken (gameSpeed)
+            if (secondsSinceLastRender < gameSpeed / 1000) return;
+            
+            lastTime = currentTime;
+
+            update();
+            draw();
+        }
+
+        function update() {
+            if(!d) return; 
+            d = nextDirection;
+
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (d == "LEFT") snakeX -= box;
+            if (d == "UP") snakeY -= box;
+            if (d == "RIGHT") snakeX += box;
+            if (d == "DOWN") snakeY += box;
+
+            // Çarpışma
+            if (snakeX < 0 || snakeX >= canvas.width || 
+                snakeY < 0 || snakeY >= canvas.height || 
+                checkCollision(snakeX, snakeY)) {
+                gameOver();
+                return;
+            }
+
+            // Yeme Mantığı
+            if (snakeX == food.x && snakeY == food.y) {
+                score++;
+                document.getElementById("score").innerText = score;
+                
+                // HIZLANDIRMA MANTIĞI
+                if(gameSpeed > minSpeed) {
+                    gameSpeed -= speedStep; // Hızı düşür (yani hızlandır)
+                }
+                document.getElementById("speedDisplay").innerText = gameSpeed;
+                
+                // Kuyruğa çift olarak ekle
+                let randomCouple = bodyTypes[Math.floor(Math.random() * bodyTypes.length)];
+                halayLine.unshift(randomCouple);
+                
+                spawnFood();
+            } else {
+                snake.pop();
+            }
+
+            let newHead = { x: snakeX, y: snakeY };
+            snake.unshift(newHead);
+        }
+
+        function checkCollision(x, y) {
+            for (let i = 0; i < snake.length; i++) {
+                if (x == snake[i].x && y == snake[i].y) return true;
+            }
+            return false;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#5e3370";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "38px Segoe UI Emoji";
+
+            for (let i = 0; i < snake.length; i++) {
+                let emojiToDraw;
+                
+                if (i === 0) {
+                    emojiToDraw = leaderEmoji;
+                } else {
+                    emojiToDraw = halayLine[i - 1];
+                }
+
+                // YAN DÖNME MANTIĞI
+                let segmentDir = "";
+                if (i === 0) {
+                    segmentDir = d; 
+                } else {
+                    let prev = snake[i-1];
+                    let curr = snake[i];
+                    if (prev.y < curr.y) segmentDir = "UP";
+                    else if (prev.y > curr.y) segmentDir = "DOWN";
+                }
+
+                ctx.save();
+                let centerX = snake[i].x + box/2;
+                let centerY = snake[i].y + box/2;
+                ctx.translate(centerX, centerY);
+
+                if (segmentDir == "UP" || segmentDir == "DOWN") {
+                    ctx.rotate(-Math.PI / 2); 
+                }
+
+                ctx.fillText(emojiToDraw, 0, 4);
+                ctx.restore();
+            }
+
+            ctx.fillText(food.type, food.x + box/2, food.y + box/2 + 4);
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            if(player) player.pauseVideo();
+            
+            document.getElementById('startScreen').style.display = 'flex';
+            document.querySelector('#startScreen h1').innerText = "HALAY DAĞILDI! 🤕";
+            document.querySelector('#startBtn').innerText = "TEKRAR DENE";
+            document.querySelector('#startScreen p').innerText = "Son Hız: " + gameSpeed + "ms | Ekip: " + score;
+        }
+
+    </script>
+</body>
+</html>
