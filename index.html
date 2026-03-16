@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Oyun Koleksiyonu</title>
+    <style>
+        body {
+            background-color: #2c3e50;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        h1 {
+            color: #f1c40f;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 40px;
+            font-size: 36px;
+        }
+        .game-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+        }
+        .game-card {
+            background-color: #34495e;
+            padding: 40px 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 260px;
+            text-decoration: none;
+            color: white;
+            border: 4px solid transparent;
+            cursor: pointer;
+        }
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+        }
+        /* Kartlara özel vurgu renkleri */
+        .game-card.burger:hover { border-color: #e67e22; }
+        .game-card.halay:hover { border-color: #9b59b6; }
+        
+        .emoji { 
+            font-size: 70px; 
+            margin-bottom: 20px; 
+            display: block; 
+        }
+        .title { 
+            font-size: 24px; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+        }
+        .desc { 
+            font-size: 15px; 
+            color: #bdc3c7; 
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Benim Mini Oyunlarım</h1>
+
+    <div class="game-container">
+        <a href="hamburger-game.html" class="game-card burger">
+            <span class="emoji">🍔</span>
+            <div class="title">Hamburger Treni</div>
+            <div class="desc">Klasik yılan oyunu ama lezzetli malzemelerle! Puan topladıkça büyüyen bir hamburger yap.</div>
+        </a>
+
+        <a href="halay-game.html" class="game-card halay">
+            <span class="emoji">🕺⚡</span>
+            <div class="title">Hızlanan Halay</div>
+            <div class="desc">Ekibi topla, halayı büyüt! Müzik eşliğinde oynanan ve gittikçe hızlanan bir refleks testi.</div>
+        </a>
+    </div>
+
+</body>
+</html>
