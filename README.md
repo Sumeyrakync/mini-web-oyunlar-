@@ -2,7 +2,7 @@
 
 Welcome to my mini web games repository! This project features a collection of fun, single-file, browser-based games built entirely with vanilla web technologies.
 
-**🌟 Play the games here:** [Live Demo](https://Sumeyrakync.github.io/mini-web-oyunlar/) *(Click to play!)*
+**🌟 Play the games here:** [Live Demo](https://Sumeyrakync.github.io/mini-web-oyunlar-/) *(Click to play!)*
 
 ---
 
